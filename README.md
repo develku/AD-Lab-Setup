@@ -69,6 +69,10 @@ AD-Lab-Setup/
 │   └── sysmon-config.xml             # SOC-tuned Sysmon configuration
 ├── diagrams/
 │   └── network-topology.drawio       # Network diagram (draw.io)
+├── scenarios/
+│   └── 01-brute-force/
+│       ├── Simulate-BruteForce.ps1   # Attack simulation (brute force + password spray)
+│       └── PLAYBOOK.md               # SOC detection and response playbook
 ├── docs/
 │   ├── 01-DC-Setup.md                # Domain Controller build guide
 │   ├── 02-Workstation-Join.md        # Domain join procedure
@@ -121,3 +125,11 @@ Follow [docs/02-Workstation-Join.md](docs/02-Workstation-Join.md) to join Window
 - **Network Services:** DNS, DHCP scoping, VLAN segmentation
 - **Automation:** PowerShell-based provisioning for repeatable deployments
 - **Documentation:** Step-by-step build guides and troubleshooting procedures
+
+## SOC Scenarios
+
+Hands-on detection scenarios with attack simulations and SOC playbooks. Each scenario includes a simulation script to generate realistic telemetry and a playbook walking through the full detect, investigate, and respond workflow.
+
+| Scenario | MITRE ATT&CK | Description |
+|---|---|---|
+| [Brute Force Detection](scenarios/01-brute-force/PLAYBOOK.md) | T1110.001, T1110.003 | Simulate brute-force and password spraying attacks, detect via failed logon analysis, investigate for credential compromise, and execute containment |
