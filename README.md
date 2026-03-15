@@ -133,3 +133,4 @@ Hands-on detection scenarios with attack simulations and SOC playbooks. Each sce
 | Scenario | MITRE ATT&CK | Description |
 |---|---|---|
 | [Brute Force Detection](scenarios/01-brute-force/PLAYBOOK.md) | T1110.001, T1110.003 | Simulate brute-force and password spraying attacks, detect via failed logon analysis, investigate for credential compromise, and execute containment |
+| [Privilege Escalation](scenarios/02-privilege-escalation/PLAYBOOK.md) | T1078, T1098, T1136 | Simulate insider threat with unauthorized group changes and backdoor accounts, detect via privilege escalation queries, investigate full kill chain, and execute containment |
