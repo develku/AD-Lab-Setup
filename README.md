@@ -6,8 +6,6 @@ Home lab Active Directory environment with automated provisioning, security moni
 
 ![AD Lab Architecture](diagrams/architecture.excalidraw.png)
 
-See [diagrams/architecture.excalidraw](diagrams/architecture.excalidraw) for the interactive version. Open the `.excalidraw` file in [excalidraw.com](https://excalidraw.com) to view and edit.
-
 ## What This Demonstrates
 
 ### IT Support & Systems Administration
@@ -124,8 +122,7 @@ AD-Lab-Setup/
 │       ├── Simulate-PrivilegeEscalation.ps1  # Insider threat simulation
 │       └── PLAYBOOK.md               # SOC investigation playbook (full kill chain)
 ├── diagrams/
-│   ├── architecture.excalidraw       # Interactive architecture diagram
-│   └── network-topology.drawio       # Network diagram (draw.io)
+│   └── architecture.excalidraw.png   # Architecture diagram
 ├── docs/
 │   ├── 01-DC-Setup.md                # Domain Controller build guide
 │   ├── 02-Workstation-Join.md        # Domain join procedure
