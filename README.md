@@ -57,7 +57,10 @@ AD-Lab-Setup/
 │   ├── 05-Configure-GPOs.ps1         # Group Policy Objects
 │   ├── 06-Configure-DHCP.ps1         # DHCP scope and options
 │   ├── 07-Create-ServiceAccounts.ps1 # Service account provisioning
+│   ├── 08-Deploy-Sysmon.ps1          # Sysmon deployment and config updates
 │   └── users.csv                     # Sample user data
+├── sysmon/
+│   └── sysmon-config.xml             # SOC-tuned Sysmon configuration
 ├── diagrams/
 │   └── network-topology.drawio       # Network diagram (draw.io)
 ├── docs/
@@ -93,6 +96,9 @@ AD-Lab-Setup/
 .\scripts\05-Configure-GPOs.ps1
 .\scripts\06-Configure-DHCP.ps1
 .\scripts\07-Create-ServiceAccounts.ps1
+
+# Deploy Sysmon for endpoint monitoring (requires Sysmon64.exe — see script for download instructions)
+.\scripts\08-Deploy-Sysmon.ps1
 ```
 
 ### Step 3: Join Workstations
