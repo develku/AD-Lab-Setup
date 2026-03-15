@@ -5,15 +5,20 @@
 - Domain Controller (DC01) is running and accessible
 - Workstation VM: Windows 10 or 11, 2 vCPUs, 4 GB RAM, 40 GB disk
 - Network connectivity to DC01 (192.168.10.10)
+- Workstations should be on **VLAN 20** (192.168.20.0/24) — DHCP will assign addresses from the range 192.168.20.100–250
 
 ## Step 1: Configure Workstation Network
 
-Set DNS to point to the Domain Controller:
+Workstations live on **VLAN 20** (192.168.20.0/24) and receive their IP via DHCP.
+DNS must still point to the Domain Controller on VLAN 10:
 
 ```powershell
 $adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -First 1
 Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses "192.168.10.10"
 ```
+
+> **Note:** If DHCP is active, DNS will be set automatically via the DHCP scope options
+> (VLAN 20 scope pushes 192.168.10.10 as DNS server).
 
 Verify DNS resolution:
 

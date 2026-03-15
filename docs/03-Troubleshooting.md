@@ -67,6 +67,14 @@ Add-DnsServerPrimaryZone -NetworkId "192.168.10.0/24" -ReplicationScope Domain
 
 ## DHCP
 
+The lab uses three DHCP scopes (one per VLAN):
+
+| Scope | VLAN | Range | Purpose |
+|---|---|---|---|
+| 192.168.10.0 | 10 | .100–.200 | Servers |
+| 192.168.20.0 | 20 | .100–.250 | Workstations |
+| 192.168.30.0 | 30 | .100–.150 | Management |
+
 ### Clients not receiving IP addresses
 
 **Cause:** DHCP not authorised in AD, or scope not active.
@@ -76,11 +84,13 @@ Add-DnsServerPrimaryZone -NetworkId "192.168.10.0/24" -ReplicationScope Domain
 # Check authorisation
 Get-DhcpServerInDC
 
-# Check scope status
+# Check scope status — all three scopes should be Active
 Get-DhcpServerv4Scope | Select ScopeId, State
 
-# Activate if inactive
-Set-DhcpServerv4Scope -ScopeId 192.168.10.0 -State Active
+# Activate the appropriate scope if inactive
+Set-DhcpServerv4Scope -ScopeId 192.168.20.0 -State Active   # Workstations
+Set-DhcpServerv4Scope -ScopeId 192.168.30.0 -State Active   # Management
+Set-DhcpServerv4Scope -ScopeId 192.168.10.0 -State Active   # Servers
 ```
 
 ### IP conflict detected
@@ -89,11 +99,12 @@ Set-DhcpServerv4Scope -ScopeId 192.168.10.0 -State Active
 
 **Fix:**
 ```powershell
-# Check current leases
-Get-DhcpServerv4Lease -ScopeId 192.168.10.0
+# Check current leases (use the scope matching the conflicting subnet)
+Get-DhcpServerv4Lease -ScopeId 192.168.20.0   # Workstations
+Get-DhcpServerv4Lease -ScopeId 192.168.10.0   # Servers
 
-# Add exclusion for the conflicting IP
-Add-DhcpServerv4ExclusionRange -ScopeId 192.168.10.0 -StartRange 192.168.10.50 -EndRange 192.168.10.50
+# Add exclusion for the conflicting IP (example for workstation VLAN)
+Add-DhcpServerv4ExclusionRange -ScopeId 192.168.20.0 -StartRange 192.168.20.50 -EndRange 192.168.20.50
 ```
 
 ## Group Policy

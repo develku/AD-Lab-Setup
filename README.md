@@ -8,34 +8,39 @@ Home lab Active Directory environment with automated provisioning scripts. Built
 |---|---|
 | Domain Controller | Windows Server 2022, `lab.local` |
 | Workstations | Windows 10/11 (domain-joined) |
-| Network | 192.168.10.0/24, VLAN-segmented |
+| Network | VLANs 10/20/30 — Servers, Workstations, Management |
 | Services | AD DS, DNS, DHCP, Group Policy |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   lab.local Domain                   │
-│                                                     │
-│  ┌──────────────┐    ┌──────────────────────────┐   │
-│  │  DC01         │    │  Network Services        │   │
-│  │  192.168.10.10│    │  DNS:  192.168.10.10     │   │
-│  │  AD DS        │    │  DHCP: 192.168.10.100-200│   │
-│  │  DNS / DHCP   │    │  GW:   192.168.10.1      │   │
-│  └──────────────┘    └──────────────────────────┘   │
-│                                                     │
-│  ┌──────────────┐    ┌──────────────┐               │
-│  │  WS01         │    │  WS02         │              │
-│  │  Win 10       │    │  Win 11       │              │
-│  │  IT Support   │    │  End User     │              │
-│  │  192.168.10.x │    │  192.168.10.x │              │
-│  └──────────────┘    └──────────────┘               │
-│                                                     │
-│  VLANs:                                             │
-│  ├── VLAN 10: Servers    (192.168.10.0/24)          │
-│  ├── VLAN 20: Workstations (192.168.20.0/24)        │
-│  └── VLAN 30: Management   (192.168.30.0/24)        │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    lab.local Domain                       │
+│                                                          │
+│  VLAN 10 — Servers (192.168.10.0/24)                     │
+│  ┌──────────────┐    ┌───────────────────────────────┐   │
+│  │  DC01         │    │  Network Services             │   │
+│  │  192.168.10.10│    │  DNS:  192.168.10.10          │   │
+│  │  AD DS        │    │  DHCP: Scopes for VLANs 10-30│   │
+│  │  DNS / DHCP   │    │  GW:   192.168.10.1           │   │
+│  └──────────────┘    └───────────────────────────────┘   │
+│                                                          │
+│  VLAN 20 — Workstations (192.168.20.0/24)                │
+│  ┌──────────────┐    ┌──────────────┐                    │
+│  │  WS01         │    │  WS02         │                   │
+│  │  Win 10       │    │  Win 11       │                   │
+│  │  IT Support   │    │  End User     │                   │
+│  │  192.168.20.x │    │  192.168.20.x │                   │
+│  │  DHCP         │    │  DHCP         │                   │
+│  └──────────────┘    └──────────────┘                    │
+│                                                          │
+│  VLAN 30 — Management (192.168.30.0/24)                  │
+│  ┌──────────────┐                                        │
+│  │  ADMIN01      │                                        │
+│  │  192.168.30.x │                                        │
+│  │  DHCP         │                                        │
+│  └──────────────┘                                        │
+└──────────────────────────────────────────────────────────┘
 ```
 
 See [diagrams/](diagrams/) for detailed draw.io network diagrams.
@@ -51,6 +56,7 @@ AD-Lab-Setup/
 │   ├── 04-Create-SecurityGroups.ps1  # Security groups and membership
 │   ├── 05-Configure-GPOs.ps1         # Group Policy Objects
 │   ├── 06-Configure-DHCP.ps1         # DHCP scope and options
+│   ├── 07-Create-ServiceAccounts.ps1 # Service account provisioning
 │   └── users.csv                     # Sample user data
 ├── diagrams/
 │   └── network-topology.drawio       # Network diagram (draw.io)
@@ -86,6 +92,7 @@ AD-Lab-Setup/
 .\scripts\04-Create-SecurityGroups.ps1
 .\scripts\05-Configure-GPOs.ps1
 .\scripts\06-Configure-DHCP.ps1
+.\scripts\07-Create-ServiceAccounts.ps1
 ```
 
 ### Step 3: Join Workstations

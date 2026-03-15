@@ -9,5 +9,11 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Planning artifacts (not for portfolio visitors)
+# Claude Code
+.claude/
+.claude.*
+CLAUDE.md
 .planning/
+
+# Cursor
+.cursorrules

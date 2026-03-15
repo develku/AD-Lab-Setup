@@ -9,15 +9,27 @@
     Sets standard attributes: display name, email, title, department.
     Accounts are created enabled with password-change-at-next-logon.
 
+    Passwords are generated at runtime — they are NOT stored in the CSV or
+    any file tracked by source control. This follows the security best
+    practice of never committing credentials to a repository.
+
 .PARAMETER CsvPath
     Path to the CSV file. Defaults to users.csv in the same directory.
+
+.PARAMETER DefaultPassword
+    Optional default password to use for all accounts (lab convenience).
+    If omitted, a unique 16-character random password is generated per user.
 #>
 
 param(
-    [string]$CsvPath = "$PSScriptRoot\users.csv"
+    [string]$CsvPath = "$PSScriptRoot\users.csv",
+    [string]$DefaultPassword
 )
 
 Import-Module ActiveDirectory
+
+# Load the assembly needed for password generation
+Add-Type -AssemblyName System.Web
 
 $DomainDN = "DC=lab,DC=local"
 $DomainSuffix = "lab.local"
@@ -51,7 +63,15 @@ foreach ($User in $Users) {
         continue
     }
 
-    $SecurePassword = ConvertTo-SecureString $User.Password -AsPlainText -Force
+    # Generate or use the supplied password
+    if ($DefaultPassword) {
+        $Password = $DefaultPassword
+    }
+    else {
+        $Password = [System.Web.Security.Membership]::GeneratePassword(16, 4)
+    }
+
+    $SecurePassword = ConvertTo-SecureString $Password -AsPlainText -Force
 
     New-ADUser `
         -SamAccountName $SamAccountName `
@@ -69,7 +89,11 @@ foreach ($User in $Users) {
         -Enabled $true
 
     Write-Host "[+] Created user: $SamAccountName ($DisplayName) in $($User.Department)" -ForegroundColor Green
+    Write-Host "    Temporary password: $Password" -ForegroundColor DarkGray
     $Created++
 }
 
 Write-Host "`n[*] User provisioning complete. Created: $Created | Skipped: $Skipped" -ForegroundColor Cyan
+if (-not $DefaultPassword) {
+    Write-Host "[!] Passwords were auto-generated. Note them from above — they are not saved to disk." -ForegroundColor Yellow
+}
