@@ -4,30 +4,9 @@ Home lab Active Directory environment with automated provisioning, security moni
 
 ## Architecture
 
-[![Open in Excalidraw](https://img.shields.io/badge/Open%20in-Excalidraw-6965db)](https://excalidraw.com/#json=geyQFl4Khm9vrXdv6uYbe,8Q-iYZaETLGvBCnRqJ64fg)
+![AD Lab Architecture](diagrams/architecture.excalidraw.png)
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          lab.local Domain                                │
-│                                                                          │
-│  VLAN 10 — Servers          VLAN 20 — Workstations     VLAN 30 — Mgmt   │
-│  192.168.10.0/24            192.168.20.0/24             192.168.30.0/24  │
-│  ┌────────────────┐         ┌──────────┐ ┌──────────┐  ┌──────────┐     │
-│  │ DC01           │  ◄──WEF─┤ WS01     │ │ WS02     │  │ ADMIN01  │     │
-│  │ .10.10         │         │ Win 10   │ │ Win 11   │  │ RSAT     │     │
-│  │ AD/DNS/DHCP    │         │ Sysmon   │ │ Sysmon   │  │ Sysmon   │     │
-│  │ GPO/WEF        │         └──────────┘ └──────────┘  └──────────┘     │
-│  │ Sysmon         │                                                      │
-│  └────────────────┘                                                      │
-│                                                                          │
-│  ┌───────────────────── SOC Monitoring Layer ─────────────────────────┐  │
-│  │ Audit Policies (11 subcategories) → Sysmon (ATT&CK-mapped rules) │  │
-│  │ WEF Collector → SOC Query Scripts → Attack Scenarios & Playbooks  │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-See [diagrams/](diagrams/) for the interactive Excalidraw architecture diagram.
+See [diagrams/architecture.excalidraw](diagrams/architecture.excalidraw) for the interactive version. Open the `.excalidraw` file in [excalidraw.com](https://excalidraw.com) to view and edit.
 
 ## What This Demonstrates
 

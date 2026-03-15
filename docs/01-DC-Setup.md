@@ -19,10 +19,10 @@ Before promoting to DC, set a static IP:
 
 1. Open **Network and Sharing Center** > adapter settings
 2. Set IPv4 properties:
-   - IP: `192.168.10.10`
-   - Subnet: `255.255.255.0`
-   - Gateway: `192.168.10.1`
-   - DNS: `127.0.0.1` (will point to itself after AD DS install)
+   + IP: `192.168.10.10`
+   + Subnet: `255.255.255.0`
+   + Gateway: `192.168.10.1`
+   + DNS: `127.0.0.1` (will point to itself after AD DS install)
 
 Or via PowerShell:
 
@@ -41,6 +41,7 @@ Run the automated script:
 ```
 
 This will:
+
 1. Rename the server to `DC01`
 2. Install the AD DS role
 3. Create the `lab.local` forest
@@ -67,6 +68,7 @@ Get-ADForest | Select Name, ForestMode, RootDomain
 ```
 
 Expected output:
+
 - All services should show `Running`
 - Domain should be `lab.local` with `WinThreshold` mode
 - DNS should resolve both the domain and the DC hostname
