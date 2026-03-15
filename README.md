@@ -24,12 +24,12 @@ See [diagrams/architecture.excalidraw](diagrams/architecture.excalidraw) for the
 
 | Skill | Implementation |
 |---|---|
-| **Endpoint Monitoring** | Sysmon deployment with ATT&CK-mapped detection rules (10 event types) |
+| **Endpoint Monitoring** | Sysmon deployment with ATT&CK-mapped detection rules (12 event IDs) |
 | **Log Collection** | Windows Event Forwarding — DC01 as centralised collector |
 | **Detection Engineering** | 4 SOC query scripts: failed logons, lockouts, privilege escalation, suspicious processes |
 | **Threat Simulation** | Attack scripts generating realistic telemetry (brute force, privilege escalation) |
 | **Incident Response** | Full playbooks: detect, investigate (timeline reconstruction), respond, recover |
-| **MITRE ATT&CK** | Techniques mapped throughout: T1110, T1078, T1098, T1136, T1059, T1218 |
+| **MITRE ATT&CK** | Techniques mapped throughout: T1110, T1078, T1098, T1136, T1087, T1059, T1218 |
 
 ## SOC Scenarios
 
@@ -38,7 +38,7 @@ Hands-on detection scenarios with attack simulations and SOC playbooks. Each sce
 | Scenario | MITRE ATT&CK | Description |
 |---|---|---|
 | [Brute Force Detection](scenarios/01-brute-force/PLAYBOOK.md) | T1110.001, T1110.003 | Brute-force and password spraying simulation, failed logon analysis, credential compromise investigation |
-| [Privilege Escalation](scenarios/02-privilege-escalation/PLAYBOOK.md) | T1078, T1098, T1136 | Insider threat with unauthorized group changes and backdoor accounts, full kill chain investigation |
+| [Privilege Escalation](scenarios/02-privilege-escalation/PLAYBOOK.md) | T1078, T1098, T1136, T1087 | Insider threat with unauthorized group changes and backdoor accounts, full kill chain investigation |
 
 ## Quick Start
 

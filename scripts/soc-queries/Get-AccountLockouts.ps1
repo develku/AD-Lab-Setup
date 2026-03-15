@@ -76,6 +76,12 @@ $ParsedLockouts = foreach ($Event in $LockoutEvents) {
     $TargetUser     = ($Data | Where-Object { $_.Name -eq "TargetUserName" }).'#text'
     $CallerComputer = ($Data | Where-Object { $_.Name -eq "TargetDomainName" }).'#text'
 
+    # Event 4740 stores the caller computer name as the second property (index 1)
+    # TargetDomainName returns the domain, not the source workstation
+    if ($Event.Properties.Count -ge 2) {
+        $CallerComputer = $Event.Properties[1].Value
+    }
+
     [PSCustomObject]@{
         TimeCreated    = $Event.TimeCreated
         TargetUserName = $TargetUser
