@@ -21,36 +21,43 @@ $DomainDN = "DC=lab,DC=local"
 $CorporateDN = "OU=Corporate,$DomainDN"
 
 # ── 1. Password and Account Lockout Policy ────────────────────────────────
+# Account Policies (password length, complexity, lockout) must be applied via
+# a secedit security template (GptTmpl.inf), NOT via Set-GPRegistryValue.
+# Registry-based policies do not control Account Policies — Windows stores
+# these in the GPO's GptTmpl.inf under [System Access].
 $GPOName = "LAB-Password-Policy"
 Write-Host "[*] Configuring $GPOName..." -ForegroundColor Cyan
 
 $GPO = New-GPO -Name $GPOName -Comment "Enforces password complexity and account lockout thresholds"
 
-# Password policy settings via registry-based policies
-Set-GPRegistryValue -Name $GPOName -Key "HKLM\Software\Policies\Lab" `
-    -ValueName "PasswordPolicyApplied" -Type String -Value "True"
-
 # Link to domain root for domain-wide password policy
 New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes -ErrorAction SilentlyContinue
 Write-Host "[+] Created and linked: $GPOName" -ForegroundColor Green
 
-Write-Host @"
-    [i] Manual steps required for fine-grained password policy:
-        - Open GPMC > $GPOName > Computer Configuration
-        - Navigate: Policies > Windows Settings > Security Settings > Account Policies
-        - Password Policy:
-            Minimum password length:        12 characters
-            Password must meet complexity:  Enabled
-            Maximum password age:           90 days
-            Minimum password age:           1 day
-            Enforce password history:       10 passwords
-        - Account Lockout Policy:
-            Account lockout threshold:      5 invalid attempts
-            Account lockout duration:       30 minutes
-            Reset lockout counter after:    30 minutes
-"@ -ForegroundColor DarkYellow
+# Apply security template to set password and lockout policies
+$GPOId = $GPO.Id
+$GPOPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$GPOId}\Machine\Microsoft\Windows NT\SecEdit"
+New-Item -Path $GPOPath -ItemType Directory -Force | Out-Null
+Copy-Item "$PSScriptRoot\security-templates\password-policy.inf" "$GPOPath\GptTmpl.inf" -Force
+
+# Force Group Policy replication
+Invoke-GPUpdate -Force -ErrorAction SilentlyContinue
+
+Write-Host "[+] Applied password and lockout policy via security template:" -ForegroundColor Green
+Write-Host "      Minimum password length:      12 characters" -ForegroundColor White
+Write-Host "      Password complexity:           Enabled" -ForegroundColor White
+Write-Host "      Maximum password age:          90 days" -ForegroundColor White
+Write-Host "      Minimum password age:          1 day" -ForegroundColor White
+Write-Host "      Enforce password history:      10 passwords" -ForegroundColor White
+Write-Host "      Account lockout threshold:     5 invalid attempts" -ForegroundColor White
+Write-Host "      Account lockout duration:      30 minutes" -ForegroundColor White
+Write-Host "      Reset lockout counter after:   30 minutes" -ForegroundColor White
 
 # ── 2. Audit Policy ──────────────────────────────────────────────────────
+# Advanced Audit Policy is applied by writing audit.csv directly into the GPO's
+# Audit directory. This sets domain-wide policy (not local). The registry flag
+# SCENoApplyLegacyAuditPolicy ensures Advanced Audit overrides legacy settings.
+# These events feed into Sysmon/Splunk/ELK for SOC monitoring and SIEM ingestion.
 $GPOName = "LAB-Audit-Policy"
 Write-Host "`n[*] Configuring $GPOName..." -ForegroundColor Cyan
 
@@ -58,20 +65,47 @@ $GPO = New-GPO -Name $GPOName -Comment "Enables security event auditing for SIEM
 New-GPLink -Name $GPOName -Target $CorporateDN -LinkEnabled Yes -ErrorAction SilentlyContinue
 Write-Host "[+] Created and linked: $GPOName" -ForegroundColor Green
 
-Write-Host @"
-    [i] Manual steps required for audit policy:
-        - Open GPMC > $GPOName > Computer Configuration
-        - Navigate: Policies > Windows Settings > Security Settings > Advanced Audit Policy
-        - Enable (Success + Failure):
-            Account Logon:   Audit Credential Validation
-            Account Mgmt:    Audit User Account Management
-            Logon/Logoff:    Audit Logon, Audit Logoff, Audit Special Logon
-            Object Access:   Audit File Share, Audit File System
-            Policy Change:   Audit Policy Change, Audit Authentication Policy Change
-            Privilege Use:   Audit Sensitive Privilege Use
-            System:          Audit Security State Change
-        - These events feed into Sysmon/Splunk/ELK for SOC monitoring
-"@ -ForegroundColor DarkYellow
+# Enable Advanced Audit Policy (override legacy audit settings)
+Set-GPRegistryValue -Name $GPOName `
+    -Key "HKLM\System\CurrentControlSet\Control\Lsa" `
+    -ValueName "SCENoApplyLegacyAuditPolicy" -Type DWord -Value 1
+
+# Define audit subcategories — essential for SOC monitoring / SIEM ingestion
+$AuditCategories = @(
+    @{ Subcategory = "Credential Validation";          Setting = "Success and Failure" }
+    @{ Subcategory = "User Account Management";        Setting = "Success and Failure" }
+    @{ Subcategory = "Logon";                          Setting = "Success and Failure" }
+    @{ Subcategory = "Logoff";                         Setting = "Success" }
+    @{ Subcategory = "Special Logon";                  Setting = "Success and Failure" }
+    @{ Subcategory = "File Share";                     Setting = "Success and Failure" }
+    @{ Subcategory = "File System";                    Setting = "Success and Failure" }
+    @{ Subcategory = "Audit Policy Change";            Setting = "Success and Failure" }
+    @{ Subcategory = "Authentication Policy Change";   Setting = "Success" }
+    @{ Subcategory = "Sensitive Privilege Use";        Setting = "Success and Failure" }
+    @{ Subcategory = "Security State Change";          Setting = "Success" }
+)
+
+# Write audit.csv to GPO path in the format Windows expects
+$GPOId = $GPO.Id
+$AuditPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$GPOId}\Machine\Microsoft\Windows NT\Audit"
+New-Item -Path $AuditPath -ItemType Directory -Force | Out-Null
+
+$CsvContent = "Machine Name,Policy Target,Subcategory,Subcategory GUID,Inclusion Setting,Exclusion Setting,Setting Value`n"
+foreach ($cat in $AuditCategories) {
+    $settingValue = switch ($cat.Setting) {
+        "Success"             { 1 }
+        "Failure"             { 2 }
+        "Success and Failure" { 3 }
+        "No Auditing"         { 0 }
+    }
+    $CsvContent += ",$($cat.Subcategory),,,$($cat.Setting),,$settingValue`n"
+}
+$CsvContent | Set-Content "$AuditPath\audit.csv" -Encoding Unicode
+
+Write-Host "[+] Applied advanced audit policy via audit.csv:" -ForegroundColor Green
+foreach ($cat in $AuditCategories) {
+    Write-Host "      $($cat.Subcategory): $($cat.Setting)" -ForegroundColor White
+}
 
 # ── 3. Drive Mapping ─────────────────────────────────────────────────────
 $GPOName = "LAB-Drive-Mapping"
