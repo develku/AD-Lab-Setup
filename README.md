@@ -58,6 +58,12 @@ AD-Lab-Setup/
 │   ├── 06-Configure-DHCP.ps1         # DHCP scope and options
 │   ├── 07-Create-ServiceAccounts.ps1 # Service account provisioning
 │   ├── 08-Deploy-Sysmon.ps1          # Sysmon deployment and config updates
+│   ├── 09-Configure-WEF.ps1          # Windows Event Forwarding setup (DC01 collector)
+│   ├── soc-queries/
+│   │   ├── Get-FailedLogons.ps1      # Detect brute-force attempts (T1110)
+│   │   ├── Get-AccountLockouts.ps1   # Track lockouts with source correlation (T1110)
+│   │   ├── Get-PrivilegeEscalation.ps1 # Monitor privilege grants and group changes (T1078/T1098)
+│   │   └── Get-SuspiciousProcesses.ps1 # Flag malicious process patterns via Sysmon (T1059/T1218)
 │   └── users.csv                     # Sample user data
 ├── sysmon/
 │   └── sysmon-config.xml             # SOC-tuned Sysmon configuration
@@ -99,6 +105,9 @@ AD-Lab-Setup/
 
 # Deploy Sysmon for endpoint monitoring (requires Sysmon64.exe — see script for download instructions)
 .\scripts\08-Deploy-Sysmon.ps1
+
+# Configure Windows Event Forwarding (run on DC01 to centralize logs)
+.\scripts\09-Configure-WEF.ps1
 ```
 
 ### Step 3: Join Workstations
