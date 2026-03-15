@@ -1,84 +1,65 @@
 # AD-Lab-Setup
 
-Home lab Active Directory environment with automated provisioning scripts. Built to simulate a small enterprise domain for practising IT support, systems administration, and security operations.
-
-## Lab Overview
-
-| Component | Details |
-|---|---|
-| Domain Controller | Windows Server 2022, `lab.local` |
-| Workstations | Windows 10/11 (domain-joined) |
-| Network | VLANs 10/20/30 — Servers, Workstations, Management |
-| Services | AD DS, DNS, DHCP, Group Policy |
+Home lab Active Directory environment with automated provisioning, security monitoring, and SOC detection scenarios. Built to simulate a small enterprise domain for practising IT support, systems administration, and security operations.
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                    lab.local Domain                       │
-│                                                          │
-│  VLAN 10 — Servers (192.168.10.0/24)                     │
-│  ┌──────────────┐    ┌───────────────────────────────┐   │
-│  │  DC01         │    │  Network Services             │   │
-│  │  192.168.10.10│    │  DNS:  192.168.10.10          │   │
-│  │  AD DS        │    │  DHCP: Scopes for VLANs 10-30│   │
-│  │  DNS / DHCP   │    │  GW:   192.168.10.1           │   │
-│  └──────────────┘    └───────────────────────────────┘   │
-│                                                          │
-│  VLAN 20 — Workstations (192.168.20.0/24)                │
-│  ┌──────────────┐    ┌──────────────┐                    │
-│  │  WS01         │    │  WS02         │                   │
-│  │  Win 10       │    │  Win 11       │                   │
-│  │  IT Support   │    │  End User     │                   │
-│  │  192.168.20.x │    │  192.168.20.x │                   │
-│  │  DHCP         │    │  DHCP         │                   │
-│  └──────────────┘    └──────────────┘                    │
-│                                                          │
-│  VLAN 30 — Management (192.168.30.0/24)                  │
-│  ┌──────────────┐                                        │
-│  │  ADMIN01      │                                        │
-│  │  192.168.30.x │                                        │
-│  │  DHCP         │                                        │
-│  └──────────────┘                                        │
-└──────────────────────────────────────────────────────────┘
-```
-
-See [diagrams/](diagrams/) for detailed draw.io network diagrams.
-
-## Repository Structure
+[![Open in Excalidraw](https://img.shields.io/badge/Open%20in-Excalidraw-6965db)](https://excalidraw.com/#json=geyQFl4Khm9vrXdv6uYbe,8Q-iYZaETLGvBCnRqJ64fg)
 
 ```
-AD-Lab-Setup/
-├── scripts/
-│   ├── 01-Install-ADForest.ps1       # Promote server to DC and create forest
-│   ├── 02-Create-OUStructure.ps1     # Build OU hierarchy
-│   ├── 03-Create-Users.ps1           # Bulk user provisioning from CSV
-│   ├── 04-Create-SecurityGroups.ps1  # Security groups and membership
-│   ├── 05-Configure-GPOs.ps1         # Group Policy Objects
-│   ├── 06-Configure-DHCP.ps1         # DHCP scope and options
-│   ├── 07-Create-ServiceAccounts.ps1 # Service account provisioning
-│   ├── 08-Deploy-Sysmon.ps1          # Sysmon deployment and config updates
-│   ├── 09-Configure-WEF.ps1          # Windows Event Forwarding setup (DC01 collector)
-│   ├── soc-queries/
-│   │   ├── Get-FailedLogons.ps1      # Detect brute-force attempts (T1110)
-│   │   ├── Get-AccountLockouts.ps1   # Track lockouts with source correlation (T1110)
-│   │   ├── Get-PrivilegeEscalation.ps1 # Monitor privilege grants and group changes (T1078/T1098)
-│   │   └── Get-SuspiciousProcesses.ps1 # Flag malicious process patterns via Sysmon (T1059/T1218)
-│   └── users.csv                     # Sample user data
-├── sysmon/
-│   └── sysmon-config.xml             # SOC-tuned Sysmon configuration
-├── diagrams/
-│   └── network-topology.drawio       # Network diagram (draw.io)
-├── scenarios/
-│   └── 01-brute-force/
-│       ├── Simulate-BruteForce.ps1   # Attack simulation (brute force + password spray)
-│       └── PLAYBOOK.md               # SOC detection and response playbook
-├── docs/
-│   ├── 01-DC-Setup.md                # Domain Controller build guide
-│   ├── 02-Workstation-Join.md        # Domain join procedure
-│   └── 03-Troubleshooting.md         # Common issues and fixes
-└── README.md
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          lab.local Domain                                │
+│                                                                          │
+│  VLAN 10 — Servers          VLAN 20 — Workstations     VLAN 30 — Mgmt   │
+│  192.168.10.0/24            192.168.20.0/24             192.168.30.0/24  │
+│  ┌────────────────┐         ┌──────────┐ ┌──────────┐  ┌──────────┐     │
+│  │ DC01           │  ◄──WEF─┤ WS01     │ │ WS02     │  │ ADMIN01  │     │
+│  │ .10.10         │         │ Win 10   │ │ Win 11   │  │ RSAT     │     │
+│  │ AD/DNS/DHCP    │         │ Sysmon   │ │ Sysmon   │  │ Sysmon   │     │
+│  │ GPO/WEF        │         └──────────┘ └──────────┘  └──────────┘     │
+│  │ Sysmon         │                                                      │
+│  └────────────────┘                                                      │
+│                                                                          │
+│  ┌───────────────────── SOC Monitoring Layer ─────────────────────────┐  │
+│  │ Audit Policies (11 subcategories) → Sysmon (ATT&CK-mapped rules) │  │
+│  │ WEF Collector → SOC Query Scripts → Attack Scenarios & Playbooks  │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+See [diagrams/](diagrams/) for the interactive Excalidraw architecture diagram.
+
+## What This Demonstrates
+
+### IT Support & Systems Administration
+
+| Skill | Implementation |
+|---|---|
+| **Active Directory** | Forest/domain creation, OU hierarchy, user lifecycle, service accounts |
+| **Group Policy** | Password policies (secedit), audit policies, drive mappings, USB restrictions |
+| **Network Services** | DNS, DHCP with multi-VLAN scoping, VLAN segmentation |
+| **PowerShell Automation** | 9 provisioning scripts — repeatable, idempotent, fully automated |
+| **Troubleshooting** | Step-by-step guides for common AD, DNS, DHCP, and GPO issues |
+
+### SOC Analyst & Security Operations
+
+| Skill | Implementation |
+|---|---|
+| **Endpoint Monitoring** | Sysmon deployment with ATT&CK-mapped detection rules (10 event types) |
+| **Log Collection** | Windows Event Forwarding — DC01 as centralised collector |
+| **Detection Engineering** | 4 SOC query scripts: failed logons, lockouts, privilege escalation, suspicious processes |
+| **Threat Simulation** | Attack scripts generating realistic telemetry (brute force, privilege escalation) |
+| **Incident Response** | Full playbooks: detect, investigate (timeline reconstruction), respond, recover |
+| **MITRE ATT&CK** | Techniques mapped throughout: T1110, T1078, T1098, T1136, T1059, T1218 |
+
+## SOC Scenarios
+
+Hands-on detection scenarios with attack simulations and SOC playbooks. Each scenario includes a simulation script to generate realistic telemetry and a playbook walking through the full detect, investigate, and respond workflow.
+
+| Scenario | MITRE ATT&CK | Description |
+|---|---|---|
+| [Brute Force Detection](scenarios/01-brute-force/PLAYBOOK.md) | T1110.001, T1110.003 | Brute-force and password spraying simulation, failed logon analysis, credential compromise investigation |
+| [Privilege Escalation](scenarios/02-privilege-escalation/PLAYBOOK.md) | T1078, T1098, T1136 | Insider threat with unauthorized group changes and backdoor accounts, full kill chain investigation |
 
 ## Quick Start
 
@@ -106,31 +87,79 @@ AD-Lab-Setup/
 .\scripts\05-Configure-GPOs.ps1
 .\scripts\06-Configure-DHCP.ps1
 .\scripts\07-Create-ServiceAccounts.ps1
+```
 
-# Deploy Sysmon for endpoint monitoring (requires Sysmon64.exe — see script for download instructions)
+### Step 3: Deploy Security Monitoring
+
+```powershell
+# Deploy Sysmon (requires Sysmon64.exe — see script for download instructions)
 .\scripts\08-Deploy-Sysmon.ps1
 
-# Configure Windows Event Forwarding (run on DC01 to centralize logs)
+# Configure Windows Event Forwarding (centralise logs on DC01)
 .\scripts\09-Configure-WEF.ps1
 ```
 
-### Step 3: Join Workstations
+### Step 4: Join Workstations
 
 Follow [docs/02-Workstation-Join.md](docs/02-Workstation-Join.md) to join Windows clients to the domain.
 
-## What This Demonstrates
+### Step 5: Run SOC Scenarios
 
-- **AD DS Administration:** Forest/domain creation, OU design, user lifecycle management
-- **Group Policy:** Password policies, drive mappings, software restrictions, audit policies
-- **Network Services:** DNS, DHCP scoping, VLAN segmentation
-- **Automation:** PowerShell-based provisioning for repeatable deployments
-- **Documentation:** Step-by-step build guides and troubleshooting procedures
+```powershell
+# Simulate a brute force attack and investigate
+.\scenarios\01-brute-force\Simulate-BruteForce.ps1
+.\scripts\soc-queries\Get-FailedLogons.ps1 -Hours 1
 
-## SOC Scenarios
+# Simulate privilege escalation and investigate
+.\scenarios\02-privilege-escalation\Simulate-PrivilegeEscalation.ps1
+.\scripts\soc-queries\Get-PrivilegeEscalation.ps1 -Hours 1
+```
 
-Hands-on detection scenarios with attack simulations and SOC playbooks. Each scenario includes a simulation script to generate realistic telemetry and a playbook walking through the full detect, investigate, and respond workflow.
+## Repository Structure
 
-| Scenario | MITRE ATT&CK | Description |
-|---|---|---|
-| [Brute Force Detection](scenarios/01-brute-force/PLAYBOOK.md) | T1110.001, T1110.003 | Simulate brute-force and password spraying attacks, detect via failed logon analysis, investigate for credential compromise, and execute containment |
-| [Privilege Escalation](scenarios/02-privilege-escalation/PLAYBOOK.md) | T1078, T1098, T1136 | Simulate insider threat with unauthorized group changes and backdoor accounts, detect via privilege escalation queries, investigate full kill chain, and execute containment |
+```
+AD-Lab-Setup/
+├── scripts/
+│   ├── 01-Install-ADForest.ps1       # Promote server to DC and create forest
+│   ├── 02-Create-OUStructure.ps1     # Build OU hierarchy
+│   ├── 03-Create-Users.ps1           # Bulk user provisioning from CSV
+│   ├── 04-Create-SecurityGroups.ps1  # Security groups and membership
+│   ├── 05-Configure-GPOs.ps1         # Group Policy (password, audit, USB, updates)
+│   ├── 06-Configure-DHCP.ps1         # DHCP scope and options (3 VLANs)
+│   ├── 07-Create-ServiceAccounts.ps1 # Service account provisioning
+│   ├── 08-Deploy-Sysmon.ps1          # Sysmon deployment and config updates
+│   ├── 09-Configure-WEF.ps1          # Windows Event Forwarding setup
+│   ├── soc-queries/
+│   │   ├── Get-FailedLogons.ps1      # Detect brute-force attempts (T1110)
+│   │   ├── Get-AccountLockouts.ps1   # Track lockouts with source correlation
+│   │   ├── Get-PrivilegeEscalation.ps1 # Monitor privilege and group changes (T1078/T1098)
+│   │   └── Get-SuspiciousProcesses.ps1 # Flag suspicious process patterns (T1059/T1218)
+│   └── users.csv                     # Sample user data (no passwords)
+├── sysmon/
+│   └── sysmon-config.xml             # SOC-tuned Sysmon config (ATT&CK-mapped)
+├── scenarios/
+│   ├── 01-brute-force/
+│   │   ├── Simulate-BruteForce.ps1   # Attack simulation (brute force + password spray)
+│   │   └── PLAYBOOK.md               # SOC detection and response playbook
+│   └── 02-privilege-escalation/
+│       ├── Simulate-PrivilegeEscalation.ps1  # Insider threat simulation
+│       └── PLAYBOOK.md               # SOC investigation playbook (full kill chain)
+├── diagrams/
+│   ├── architecture.excalidraw       # Interactive architecture diagram
+│   └── network-topology.drawio       # Network diagram (draw.io)
+├── docs/
+│   ├── 01-DC-Setup.md                # Domain Controller build guide
+│   ├── 02-Workstation-Join.md        # Domain join procedure
+│   └── 03-Troubleshooting.md         # Common issues and fixes
+└── README.md
+```
+
+## Documentation
+
+| Guide | Description |
+|---|---|
+| [DC Setup](docs/01-DC-Setup.md) | Domain Controller build from scratch |
+| [Workstation Join](docs/02-Workstation-Join.md) | Domain join procedure with verification |
+| [Troubleshooting](docs/03-Troubleshooting.md) | Common AD, DNS, DHCP, and GPO issues |
+| [Brute Force Playbook](scenarios/01-brute-force/PLAYBOOK.md) | SOC scenario: detect and respond to brute force |
+| [Privilege Escalation Playbook](scenarios/02-privilege-escalation/PLAYBOOK.md) | SOC scenario: investigate insider threat |
