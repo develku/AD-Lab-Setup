@@ -122,6 +122,10 @@ Write-Host "[*] Estimated duration: $($TotalAttempts * $DelaySeconds) seconds" -
 Write-Host ""
 
 # ── Helper: Attempt Authentication ────────────────────────────────────
+# LDAP Bind Authentication — this function simulates what real attacker tools like
+# Hydra, CrackMapExec, or Medusa do: attempt to authenticate against the DC using
+# LDAP. Each failed attempt generates Event ID 4625 on the Domain Controller, which
+# is exactly the telemetry a SOC analyst would look for in their SIEM.
 function Invoke-FailedLogon {
     param(
         [string]$Username,
@@ -135,7 +139,9 @@ function Invoke-FailedLogon {
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
     try {
-        # LDAP bind attempt — generates Event ID 4625 on the DC
+        # DirectoryEntry — .NET class that attempts an LDAP bind (authentication) to
+        # the DC. The bind either succeeds (valid credentials) or fails with an exception.
+        # Accessing .distinguishedName forces the bind to actually execute.
         $DirectoryEntry = New-Object System.DirectoryServices.DirectoryEntry(
             "LDAP://$DC",
             "$DomainName\$Username",
@@ -164,7 +170,11 @@ $StartTime = Get-Date
 
 if ($SprayMode) {
     # ── Password Spraying Mode ────────────────────────────────────────
-    # Try one password against all users, then move to next password
+    # Password Spray vs Brute Force — fundamentally different strategies:
+    #   Brute force: many passwords against ONE user (fast but triggers lockout)
+    #   Spray: ONE password against many users, then rotate (avoids per-account lockout)
+    # Spraying is stealthier because each user only sees 1 failure per round, staying
+    # below the lockout threshold. This is how real APT groups operate.
     Write-Host "[*] Starting password spray..." -ForegroundColor Yellow
     Write-Host ""
 
@@ -177,6 +187,9 @@ if ($SprayMode) {
             Invoke-FailedLogon -Username $User -Password $Password -DC $DomainController `
                 -DomainName $Domain -AttemptNumber $AttemptCounter -TotalCount $TotalAttempts
 
+            # Delay between attempts — real attackers pace their attempts to avoid
+            # triggering rate-based detection rules. A flood of 100 attempts per
+            # second is easy to detect; 1 attempt every 5 seconds blends into noise.
             if ($AttemptCounter -lt $TotalAttempts) {
                 Start-Sleep -Seconds $DelaySeconds
             }

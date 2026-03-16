@@ -60,8 +60,18 @@ param(
 )
 
 # ── Configuration ─────────────────────────────────────────────────────
+# Cyber Kill Chain — this simulation follows the real-world attack sequence:
+#   1. Initial Access (logon with valid credentials)
+#   2. Discovery (enumerate users, groups, computers)
+#   3. Privilege Escalation (add self to Domain Admins)
+#   4. Persistence (create a backdoor account that survives password resets)
+# Understanding this chain helps SOC analysts recognize partial kill chains in progress.
 $Domain     = "lab.local"
 $DomainDN   = "DC=lab,DC=local"
+
+# The backdoor account uses a benign-sounding name ("svc-update") to blend in with
+# legitimate service accounts. Real attackers do this to avoid detection during
+# manual account reviews — "svc-update" looks like a Windows Update service account.
 $BackdoorUser        = "svc-update"
 $BackdoorPassword    = "B@ckd00r2024!"
 $BackdoorDescription = "Windows Update Service"
@@ -153,6 +163,9 @@ try {
     Start-Sleep -Seconds 2
 
     # ── Step 3: Privilege Escalation (T1098 — Account Manipulation) ───
+    # Domain Admins — the highest-value target group in any AD environment. Members
+    # have full control over every object in the domain: users, computers, GPOs,
+    # and the DCs themselves. This is the attacker's end goal in most AD compromises.
     Write-Host "[*] Step 3/5: Privilege escalation — adding $TargetUser to Domain Admins" -ForegroundColor Yellow
     Write-Host "    Generates: Event ID 4728 (Member added to security-enabled global group)" -ForegroundColor White
     Write-Host "    ATT&CK:   T1098 — Account Manipulation" -ForegroundColor DarkGray
@@ -172,6 +185,10 @@ try {
 
     $BackdoorSecurePass = ConvertTo-SecureString $BackdoorPassword -AsPlainText -Force
 
+    # CN=Users — the default AD container (not an OU). Unlike OUs created in script 02,
+    # this is a built-in container that exists in every AD domain. Attackers often create
+    # accounts here because it's less monitored than custom OUs, and the account blends
+    # in with default objects like Guest and krbtgt.
     New-ADUser -Name $BackdoorUser `
         -SamAccountName $BackdoorUser `
         -UserPrincipalName "$BackdoorUser@$Domain" `
@@ -196,6 +213,9 @@ try {
 
 } finally {
     # ── Step 5: Cleanup (restore lab state) ───────────────────────────
+    # The `finally` block guarantees cleanup runs even if an error occurs in steps 1-4.
+    # Without it, a failure mid-simulation would leave the target user in Domain Admins
+    # and the backdoor account active — a real security risk even in a lab.
     Write-Host "[*] Step 5/5: Cleanup — restoring lab to original state" -ForegroundColor Yellow
     Write-Host ""
 

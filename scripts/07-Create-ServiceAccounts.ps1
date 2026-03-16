@@ -21,6 +21,13 @@ Import-Module ActiveDirectory
 Add-Type -AssemblyName System.Web
 
 $DomainDN = "DC=lab,DC=local"
+
+# Service Accounts — AD accounts used by applications and services, not by humans.
+# They run background processes (backups, database engines, log collectors) that need
+# domain credentials to access network resources. They live in their own OU for:
+#   - Distinct password policies (often longer, more complex than user passwords)
+#   - Easier auditing (any interactive logon by a service account is suspicious)
+#   - Separate GPO targeting (lock down interactive logon rights)
 $ServiceAccountOU = "OU=Service Accounts,OU=Corporate,$DomainDN"
 
 # ── Verify target OU exists ─────────────────────────────────────────────
@@ -31,6 +38,16 @@ if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$ServiceAccou
 }
 
 # ── Define service accounts ─────────────────────────────────────────────
+# Each account maps to a real-world infrastructure service:
+#   svc-backup — backup agent that needs read access to all file shares and system state
+#   svc-sql    — SQL Server engine/agent; runs the database process under this identity
+#   svc-siem   — SIEM log collector (e.g., Splunk forwarder, Wazuh agent) that reads event logs
+#   svc-scan   — vulnerability scanner (e.g., Nessus, Qualys) that performs authenticated scans
+#
+# Enterprise Alternative: Group Managed Service Accounts (gMSA) — AD can automatically
+# rotate service account passwords (every 30 days by default) without human intervention.
+# gMSAs eliminate the risk of stale credentials, but require Server 2012+ DCs and
+# application support. This lab uses standard accounts for simplicity.
 $ServiceAccounts = @(
     @{
         Name        = "svc-backup"
@@ -68,10 +85,16 @@ foreach ($Svc in $ServiceAccounts) {
         continue
     }
 
-    # Generate a secure random password
+    # Credential Hygiene — passwords are generated at runtime and displayed once.
+    # They are never written to disk or committed to source control, reducing the
+    # risk of credential exposure through file leaks or repo history.
     $Password = [System.Web.Security.Membership]::GeneratePassword(16, 4)
     $SecurePassword = ConvertTo-SecureString $Password -AsPlainText -Force
 
+    # PasswordNeverExpires — service accounts need this because no human monitors them
+    # for password expiry. If the password expired, the service would silently fail.
+    # CannotChangePassword — prevents the running service from accidentally rotating
+    # its own credential, which would break other systems that use the same password.
     New-ADUser `
         -SamAccountName $SamAccountName `
         -UserPrincipalName "$SamAccountName@lab.local" `

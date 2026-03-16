@@ -45,10 +45,18 @@ $StartTime = (Get-Date).AddHours(-$Hours)
 Write-Host "[*] Querying privilege escalation events (Event IDs 4672, 4728, 4732)..." -ForegroundColor Cyan
 Write-Host "    Time range: last $Hours hours (since $($StartTime.ToString('yyyy-MM-dd HH:mm')))" -ForegroundColor White
 
-# Known system/service accounts to exclude from 4672 alerts (reduce noise)
+# System accounts are excluded because they ALWAYS receive special privileges at
+# logon — that's by design. Alerting on SYSTEM or NETWORK SERVICE would generate
+# hundreds of false positives per day, drowning out the real signals from human
+# accounts that shouldn't have elevated privileges.
 $ExcludedAccounts = @("SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "DWM-1", "DWM-2", "UMFD-0", "UMFD-1")
 
-# Sensitive groups that warrant investigation when modified
+# Sensitive Groups — these built-in AD groups grant admin-level access to the domain.
+# Any modification to their membership should trigger an immediate investigation:
+#   Domain Admins / Enterprise Admins — full control over the domain/forest
+#   Schema Admins — can modify the AD schema (the blueprint for all objects)
+#   Backup Operators — can read any file on any DC (useful for exfiltration)
+#   Account Operators — can create/modify most user accounts
 $SensitiveGroups = @("Domain Admins", "Enterprise Admins", "Schema Admins",
                       "Administrators", "Account Operators", "Backup Operators",
                       "Server Operators", "Print Operators")
@@ -80,6 +88,10 @@ if (-not $Events -or $Events.Count -eq 0) {
 Write-Host "[*] Processing $($Events.Count) event(s)..." -ForegroundColor Cyan
 
 # ── Parse special privilege logon events (4672) ────────────────────────
+# Event 4672 — "Special privileges assigned to new logon." Fires when a user logs
+# in and receives dangerous privileges like SeDebugPrivilege (attach to any process),
+# SeBackupPrivilege (bypass file ACLs), or SeTakeOwnershipPrivilege. These privileges
+# enable powerful actions that attackers exploit during escalation.
 $PrivilegeEvents = foreach ($Event in ($Events | Where-Object { $_.Id -eq 4672 })) {
     $Xml = [xml]$Event.ToXml()
     $Data = $Xml.Event.EventData.Data
@@ -100,6 +112,10 @@ $PrivilegeEvents = foreach ($Event in ($Events | Where-Object { $_.Id -eq 4672 }
 }
 
 # ── Parse group membership changes (4728, 4732) ────────────────────────
+# 4728 = member added to a Global group (e.g., Domain Admins — domain-wide scope)
+# 4732 = member added to a Local group (e.g., Administrators on a specific machine)
+# Both are critical: 4728 grants domain-wide privileges, 4732 grants machine-level
+# admin rights. Attackers use both paths depending on their objectives.
 $GroupEvents = foreach ($Event in ($Events | Where-Object { $_.Id -in @(4728, 4732) })) {
     $Xml = [xml]$Event.ToXml()
     $Data = $Xml.Event.EventData.Data

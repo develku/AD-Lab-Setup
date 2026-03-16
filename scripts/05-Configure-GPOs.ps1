@@ -17,6 +17,10 @@
 Import-Module ActiveDirectory
 Import-Module GroupPolicy
 
+# Group Policy Objects (GPOs) — centralized configuration settings pushed from the
+# domain controller to all domain-joined machines. GPOs can enforce security settings,
+# deploy software, configure registry values, and more — ensuring every machine in
+# the domain complies with organizational standards without manual configuration.
 $DomainDN = "DC=lab,DC=local"
 $CorporateDN = "OU=Corporate,$DomainDN"
 
@@ -30,11 +34,15 @@ Write-Host "[*] Configuring $GPOName..." -ForegroundColor Cyan
 
 $GPO = New-GPO -Name $GPOName -Comment "Enforces password complexity and account lockout thresholds"
 
-# Link to domain root for domain-wide password policy
+# GPO Linking — a GPO only takes effect when linked to an OU, domain, or site.
+# Password policies MUST be linked to the domain root — this is a Windows requirement.
+# Account Policies (password length, lockout) linked to an OU are silently ignored.
 New-GPLink -Name $GPOName -Target $DomainDN -LinkEnabled Yes -ErrorAction SilentlyContinue
 Write-Host "[+] Created and linked: $GPOName" -ForegroundColor Green
 
-# Apply security template to set password and lockout policies
+# SYSVOL — a shared folder on every DC that stores GPO files, logon scripts, and
+# policies. It is automatically replicated to all DCs via DFS-R so that every DC
+# serves the same policy files regardless of which one a client contacts.
 $GPOId = $GPO.Id
 $GPOPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$GPOId}\Machine\Microsoft\Windows NT\SecEdit"
 New-Item -Path $GPOPath -ItemType Directory -Force | Out-Null
@@ -85,7 +93,9 @@ $AuditCategories = @(
     @{ Subcategory = "Security State Change";          Setting = "Success" }
 )
 
-# Write audit.csv to GPO path in the format Windows expects
+# audit.csv — the file format Windows uses for Advanced Audit Policy configuration
+# within GPOs. Each row maps a subcategory to a setting value (1=Success, 2=Failure,
+# 3=Both, 0=None). This file is placed in the GPO's Audit directory in SYSVOL.
 $GPOId = $GPO.Id
 $AuditPath = "\\$env:USERDNSDOMAIN\SYSVOL\$env:USERDNSDOMAIN\Policies\{$GPOId}\Machine\Microsoft\Windows NT\Audit"
 New-Item -Path $AuditPath -ItemType Directory -Force | Out-Null
@@ -133,6 +143,11 @@ Write-Host @"
 "@ -ForegroundColor DarkYellow
 
 # ── 4. Disable Removable Storage (non-IT users) ─────────────────────────
+# Removable Storage Blocking — prevents users from using USB drives, external hard
+# disks, and other removable media. This mitigates two major risks:
+#   - Data exfiltration: an insider copying sensitive files to a USB drive
+#   - Malware delivery: infected USB drives dropped in parking lots (a real attack vector)
+# IT is excluded because they may need USB access for legitimate administration.
 $GPOName = "LAB-Disable-USB"
 Write-Host "`n[*] Configuring $GPOName..." -ForegroundColor Cyan
 
@@ -155,7 +170,10 @@ Write-Host "`n[*] Configuring $GPOName..." -ForegroundColor Cyan
 
 $GPO = New-GPO -Name $GPOName -Comment "Configures Windows Update schedule and auto-install"
 
-# Auto download and schedule install (option 4)
+# AUOptions value 4 — "Auto download and schedule the install." Other values:
+#   2 = Notify before download, 3 = Auto download + notify before install,
+#   5 = Allow local admin to choose. Value 4 is the enterprise standard —
+#   updates download silently and install on a schedule to avoid disrupting users.
 Set-GPRegistryValue -Name $GPOName `
     -Key "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate\AU" `
     -ValueName "AUOptions" -Type DWord -Value 4

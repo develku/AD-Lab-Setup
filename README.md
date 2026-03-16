@@ -4,7 +4,7 @@ Home lab Active Directory environment with automated provisioning, security moni
 
 ## Architecture
 
-![AD Lab Architecture](diagrams/architecture.excalidraw.png)
+![AD Lab Architecture](/diagrams/architecture.excalidraw.png)
 
 ## What This Demonstrates
 
@@ -122,7 +122,7 @@ AD-Lab-Setup/
 │       ├── Simulate-PrivilegeEscalation.ps1  # Insider threat simulation
 │       └── PLAYBOOK.md               # SOC investigation playbook (full kill chain)
 ├── diagrams/
-│   └── architecture.excalidraw.png   # Architecture diagram
+│   └── architecture.png              # Architecture diagram
 ├── docs/
 │   ├── 01-DC-Setup.md                # Domain Controller build guide
 │   ├── 02-Workstation-Join.md        # Domain join procedure

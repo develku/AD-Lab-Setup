@@ -47,14 +47,24 @@ Write-Host "[*] Querying Sysmon process creation events (Event ID 1)..." -Foregr
 Write-Host "    Time range: last $Hours hours (since $($StartTime.ToString('yyyy-MM-dd HH:mm')))" -ForegroundColor White
 
 # ── Suspicious patterns ─────────────────────────────────────────────────
-# Office parent processes that should never spawn cmd/powershell
+# Office Child Processes — Word, Excel, etc. should NEVER spawn cmd.exe or
+# powershell.exe during normal use. When they do, it almost always means a
+# malicious macro is executing — this is the most common initial access vector
+# in phishing attacks (a user opens a weaponized document).
 $OfficeProcesses = @("WINWORD.EXE", "EXCEL.EXE", "POWERPNT.EXE", "OUTLOOK.EXE", "MSACCESS.EXE")
 
-# Living-off-the-land binaries (LOLBins) commonly abused by attackers
+# LOLBins (Living-Off-the-Land Binaries) — legitimate Windows system tools that
+# attackers abuse to avoid detection. Since these are signed Microsoft binaries,
+# they bypass application whitelisting and don't trigger antivirus. For example:
+#   certutil — meant for certificate management, but can download files from the internet
+#   bitsadmin — background file transfer service, abused as a stealthy downloader
+#   mshta — runs HTML applications, used to execute malicious scripts
 $LOLBins = @("certutil.exe", "bitsadmin.exe", "mshta.exe", "regsvr32.exe",
              "rundll32.exe", "wscript.exe", "cscript.exe")
 
-# Suspicious execution directories
+# Suspicious Execution Paths — malware typically runs from user-writable directories
+# (Temp, Downloads, AppData) because attackers don't have write access to system
+# directories like C:\Windows\System32. Legitimate software runs from Program Files.
 $SuspiciousPaths = @("\\Temp\\", "\\Downloads\\", "\\AppData\\Local\\Temp\\",
                       "\\AppData\\Roaming\\", "\\ProgramData\\")
 
@@ -100,7 +110,9 @@ $SuspiciousEvents = foreach ($Event in $Events) {
 
     $Flags = @()
 
-    # Check 1: PowerShell with encoded commands (T1059.001)
+    # Encoded PowerShell — attackers base64-encode their scripts to bypass command-line
+    # logging, signature-based detection, and manual review. Legitimate admins rarely
+    # use -EncodedCommand in day-to-day operations; its presence is a strong red flag.
     if ($ImageName -like "*powershell*" -and $CommandLine -match "-[Ee](nc|ncodedCommand)") {
         $Flags += "Encoded PowerShell"
     }

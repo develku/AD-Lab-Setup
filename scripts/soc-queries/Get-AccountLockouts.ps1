@@ -37,6 +37,12 @@ param(
     [string]$ComputerName
 )
 
+# Account Lockout Mechanism — when a user exceeds the failed logon threshold (set in
+# GPO), the account is temporarily locked. All lockout events (4740) are processed
+# by the PDC Emulator FSMO role holder — the single DC in the domain that acts as
+# the authoritative source for password and lockout state. This means lockout events
+# always appear on the PDC Emulator first, making it the best place to query them.
+
 $StartTime = (Get-Date).AddHours(-$Hours)
 
 Write-Host "[*] Querying account lockout events (Event ID 4740)..." -ForegroundColor Cyan
@@ -76,8 +82,10 @@ $ParsedLockouts = foreach ($Event in $LockoutEvents) {
     $TargetUser     = ($Data | Where-Object { $_.Name -eq "TargetUserName" }).'#text'
     $CallerComputer = ($Data | Where-Object { $_.Name -eq "TargetDomainName" }).'#text'
 
-    # Event 4740 stores the caller computer name as the second property (index 1)
-    # TargetDomainName returns the domain, not the source workstation
+    # Properties Array — raw event data fields accessed by numeric index. Event 4740
+    # stores data as: [0]=TargetUserName, [1]=CallerComputerName. The XML field
+    # TargetDomainName misleadingly returns the domain, not the source workstation,
+    # so we use the Properties array to get the actual caller computer.
     if ($Event.Properties.Count -ge 2) {
         $CallerComputer = $Event.Properties[1].Value
     }
@@ -93,6 +101,10 @@ Write-Host "`n[*] Account lockout details:" -ForegroundColor Cyan
 $ParsedLockouts | Format-Table TimeCreated, TargetUserName, CallerComputer -AutoSize
 
 # ── Cross-reference with failed logons (4625) ──────────────────────────
+# Why cross-reference 4740 with 4625 — the lockout event (4740) tells you WHO got
+# locked out and WHEN, but not FROM WHERE the bad attempts came. The failed logon
+# events (4625) contain the source IP address. Correlating both reveals the attacker's
+# origin and distinguishes a real attack from a user who simply forgot their password.
 Write-Host "[*] Cross-referencing with failed logon events (Event ID 4625)..." -ForegroundColor Cyan
 
 $FailedLogonFilter = @{

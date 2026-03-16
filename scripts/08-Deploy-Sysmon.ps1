@@ -25,6 +25,16 @@
     relative to the script directory.
 #>
 
+# Sysmon (System Monitor) — a Microsoft Sysinternals tool that hooks into the
+# Windows kernel to log detailed endpoint activity that the built-in event log misses:
+# process creation with full command lines, network connections with ports and IPs,
+# file creation timestamps, registry modifications, and DNS queries.
+#
+# Why Sysmon matters for SOC — Windows native Security logging records WHO logged in
+# and WHAT files were accessed, but not HOW processes were launched or which command-line
+# arguments were used. Without Sysmon, a SOC analyst can't see that "powershell.exe
+# -enc <base64>" was executed — they only see that PowerShell ran.
+
 param(
     [string]$SysmonPath  = "$PSScriptRoot\..\sysmon\Sysmon64.exe",
     [string]$ConfigPath  = "$PSScriptRoot\..\sysmon\sysmon-config.xml"
@@ -35,6 +45,10 @@ $SysmonPath = (Resolve-Path $SysmonPath -ErrorAction SilentlyContinue).Path
 $ConfigPath = (Resolve-Path $ConfigPath -ErrorAction SilentlyContinue).Path
 
 # ── Validate config file ─────────────────────────────────────────────
+# The XML config controls which events Sysmon logs and which it filters out.
+# Without tuning, Sysmon generates enormous volumes of noise (every process on the
+# system). A good config filters out known-safe activity and keeps only events that
+# are security-relevant — this is the "signal vs noise" tuning that makes Sysmon useful.
 if (-not $ConfigPath -or -not (Test-Path $ConfigPath)) {
     Write-Host "[-] Sysmon config not found: $PSScriptRoot\..\sysmon\sysmon-config.xml" -ForegroundColor Red
     Write-Host "[-] Ensure sysmon-config.xml exists in the sysmon/ directory." -ForegroundColor Red
@@ -92,6 +106,9 @@ if ($SysmonService) {
         exit 1
     }
 
+    # -accepteula — Sysinternals tools prompt for EULA acceptance on first run.
+    # This flag accepts it silently, which is required for unattended/scripted installs.
+    # -i — install Sysmon as a service with the specified XML configuration.
     Write-Host "[*] Running: $SysmonPath -accepteula -i $ConfigPath" -ForegroundColor Cyan
     & $SysmonPath -accepteula -i $ConfigPath
 
@@ -128,7 +145,9 @@ if ($EventLog) {
     Write-Host "[!] Event log channel not found: $LogName" -ForegroundColor Yellow
 }
 
-# Display config hash for verification
+# Config Hash Verification — the SHA256 hash serves as an integrity check. If the
+# config was tampered with (e.g., an attacker adding exclusions to hide their activity),
+# the hash would change. Compare this hash against your known-good baseline.
 $ConfigHash = (Get-FileHash -Path $ConfigPath -Algorithm SHA256).Hash
 Write-Host "[+] Config hash (SHA256): $ConfigHash" -ForegroundColor Green
 

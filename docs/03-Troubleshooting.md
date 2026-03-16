@@ -9,6 +9,7 @@ Common issues encountered during AD lab setup and their resolutions.
 **Cause:** DNS delegation or network configuration issue.
 
 **Fix:**
+
 ```powershell
 # Ensure DNS points to localhost
 Set-DnsClientServerAddress -InterfaceIndex (Get-NetAdapter | Where-Object Status -eq "Up" | Select -First 1).ifIndex -ServerAddresses "127.0.0.1"
@@ -28,6 +29,7 @@ Get-DnsServerZone
 **Cause:** DFS Replication not yet initialised.
 
 **Fix:**
+
 ```powershell
 # Check share status
 Get-SmbShare | Where-Object { $_.Name -match "SYSVOL|NETLOGON" }
@@ -44,6 +46,7 @@ Restart-Service DFSR
 **Cause:** Workstation DNS not pointing to DC.
 
 **Fix:**
+
 ```powershell
 # On the workstation
 Set-DnsClientServerAddress -InterfaceIndex (Get-NetAdapter | Where-Object Status -eq "Up" | Select -First 1).ifIndex -ServerAddresses "192.168.10.10"
@@ -60,6 +63,7 @@ Resolve-DnsName lab.local
 **Cause:** Reverse lookup zone not created automatically.
 
 **Fix:**
+
 ```powershell
 # On DC01
 Add-DnsServerPrimaryZone -NetworkId "192.168.10.0/24" -ReplicationScope Domain
@@ -80,6 +84,7 @@ The lab uses three DHCP scopes (one per VLAN):
 **Cause:** DHCP not authorised in AD, or scope not active.
 
 **Fix:**
+
 ```powershell
 # Check authorisation
 Get-DhcpServerInDC
@@ -98,6 +103,7 @@ Set-DhcpServerv4Scope -ScopeId 192.168.10.0 -State Active   # Servers
 **Cause:** Static IP overlaps with DHCP range.
 
 **Fix:**
+
 ```powershell
 # Check current leases (use the scope matching the conflicting subnet)
 Get-DhcpServerv4Lease -ScopeId 192.168.20.0   # Workstations
@@ -114,6 +120,7 @@ Add-DhcpServerv4ExclusionRange -ScopeId 192.168.20.0 -StartRange 192.168.20.50 -
 **Cause:** Object in wrong OU, or GPO link disabled.
 
 **Fix:**
+
 ```powershell
 # On the target machine
 gpresult /r
@@ -132,6 +139,7 @@ Get-GPInheritance -Target "OU=Corporate,DC=lab,DC=local"
 **Cause:** Group Policy cache or replication delay.
 
 **Fix:**
+
 ```powershell
 # Force GP update on target machine
 gpupdate /force
@@ -148,6 +156,7 @@ Restart-Computer
 **Cause:** Exceeded lockout threshold (5 invalid attempts per GPO).
 
 **Fix:**
+
 ```powershell
 # Check lockout status
 Get-ADUser -Identity "alice.johnson" -Properties LockedOut | Select LockedOut
@@ -163,6 +172,7 @@ Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4740} -MaxEvents 5 |
 ### Password expired or must change at next logon
 
 **Fix:**
+
 ```powershell
 # Reset password
 Set-ADAccountPassword -Identity "alice.johnson" -Reset -NewPassword (ConvertTo-SecureString "NewP@ssw0rd!" -AsPlainText -Force)
@@ -178,6 +188,7 @@ Set-ADUser -Identity "alice.johnson" -ChangePasswordAtLogon $false
 **Cause:** Windows Firewall blocking ICMP, or VMs on different virtual networks.
 
 **Fix:**
+
 ```powershell
 # Enable ICMP (ping) through Windows Firewall
 New-NetFirewallRule -DisplayName "Allow ICMPv4" -Protocol ICMPv4 -IcmpType 8 -Action Allow -Direction Inbound

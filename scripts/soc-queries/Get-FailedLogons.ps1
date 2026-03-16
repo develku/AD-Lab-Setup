@@ -49,6 +49,11 @@ param(
     [int]$Threshold    = 5
 )
 
+# Event ID 4625 — Windows logs this event every time an authentication attempt fails,
+# regardless of the logon method (interactive, network, RDP). Each event contains the
+# target username, source IP, logon type, and an NTSTATUS error code explaining why
+# the attempt failed. This is the primary data source for detecting brute-force attacks.
+
 $StartTime = (Get-Date).AddHours(-$Hours)
 
 Write-Host "[*] Querying failed logon events (Event ID 4625)..." -ForegroundColor Cyan
@@ -71,6 +76,9 @@ if ($ComputerName) {
 }
 
 # ── Retrieve events ────────────────────────────────────────────────────
+# Splatting (@QueryParams) — passes a hashtable as named parameters to a cmdlet.
+# Instead of writing every parameter inline, we build the hashtable above and
+# "splat" it here. This makes dynamic parameter construction cleaner.
 $Events = Get-WinEvent @QueryParams
 
 if (-not $Events -or $Events.Count -eq 0) {
@@ -81,6 +89,9 @@ if (-not $Events -or $Events.Count -eq 0) {
 Write-Host "[!] Found $($Events.Count) failed logon event(s)." -ForegroundColor Yellow
 
 # ── Parse event data ───────────────────────────────────────────────────
+# Events are parsed via XML because Windows event properties are stored as structured
+# XML internally. While Get-WinEvent exposes some fields via .Properties[], the XML
+# approach gives reliable access to named fields like TargetUserName and IpAddress.
 $ParsedEvents = foreach ($Event in $Events) {
     $Xml = [xml]$Event.ToXml()
     $Data = $Xml.Event.EventData.Data
@@ -91,7 +102,9 @@ $ParsedEvents = foreach ($Event in $Events) {
     $Status      = ($Data | Where-Object { $_.Name -eq "Status" }).'#text'
     $SubStatus   = ($Data | Where-Object { $_.Name -eq "SubStatus" }).'#text'
 
-    # Map common failure reason codes
+    # SubStatus codes — NTSTATUS hex values from Windows authentication subsystem.
+    # These reveal WHY authentication failed, which is critical for investigation:
+    # wrong password vs. nonexistent user vs. disabled account are very different scenarios.
     $FailureReason = switch ($SubStatus) {
         "0xC0000064" { "User does not exist" }
         "0xC000006A" { "Wrong password" }

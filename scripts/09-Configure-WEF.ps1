@@ -74,6 +74,9 @@ if ($WecService -and $WecService.Status -eq "Running") {
 }
 
 # ── 2. Configure WinRM Service ────────────────────────────────────────
+# WinRM (Windows Remote Management) — Microsoft's implementation of the WS-Management
+# protocol. It's the transport layer that carries event data from source workstations
+# to the collector. WEF rides on top of WinRM over HTTP port 5985 (or HTTPS 5986).
 Write-Host "`n[*] Configuring WinRM service for event forwarding..." -ForegroundColor Cyan
 
 $WinRMService = Get-Service -Name "WinRM" -ErrorAction SilentlyContinue
@@ -115,9 +118,16 @@ function New-WEFSubscription {
     <Description>$Description</Description>
     <Enabled>true</Enabled>
     <Uri>http://schemas.microsoft.com/wbem/wsman/1/windows/EventLog</Uri>
+    <!-- ConfigurationMode "Normal" — balanced between latency and bandwidth.
+         MinLatency would forward events within seconds (real-time, high overhead).
+         MinBandwidth batches events over hours (low overhead, but stale data).
+         Normal is the standard enterprise choice for SOC monitoring. -->
     <ConfigurationMode>Normal</ConfigurationMode>
     <Delivery Mode="Push">
         <Batching>
+            <!-- MaxLatencyTime 60000ms (1 minute) — events batch on the source
+                 for up to 60 seconds before being pushed to the collector. This
+                 balances near-real-time visibility with network efficiency. -->
             <MaxLatencyTime>60000</MaxLatencyTime>
         </Batching>
     </Delivery>
@@ -131,6 +141,11 @@ $QueryXml
     <ContentFormat>RenderedText</ContentFormat>
     <Locale Language="en-US"/>
     <LogFile>$LogFile</LogFile>
+    <!-- SDDL (Security Descriptor Definition Language) — an access control string
+         that defines who can push events to this subscription.
+         (A;;GA;;;DC) = Allow Generic All to Domain Computers
+         (A;;GA;;;NS) = Allow Generic All to Network Service
+         This means any domain-joined computer can forward events to this collector. -->
     <AllowedSourceDomainComputers>O:NSG:NSD:(A;;GA;;;DC)(A;;GA;;;NS)</AllowedSourceDomainComputers>
 </Subscription>
 "@
