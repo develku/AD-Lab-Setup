@@ -9,11 +9,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Claude Code
-.claude/
-.claude.*
-CLAUDE.md
-.planning/
-
 # Cursor
 .cursorrules
