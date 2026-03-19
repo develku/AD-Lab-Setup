@@ -11,3 +11,11 @@ Thumbs.db
 
 # Cursor
 .cursorrules
+
+# AI / Claude
+.claude/
+.planning/
+CLAUDE.md
+
+# Git artifacts
+.git-rewrite/
