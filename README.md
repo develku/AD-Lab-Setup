@@ -4,7 +4,9 @@ Home lab Active Directory environment with automated provisioning, security moni
 
 ## Architecture
 
-![AD Lab Architecture](/diagrams/architecture.excalidraw.png)
+![AD Lab Architecture](./diagrams/architecture.png)
+
+- [AD Lab Architecture - excalidraw](/diagrams/architecture.excalidraw.png)
 
 ## What This Demonstrates
 
